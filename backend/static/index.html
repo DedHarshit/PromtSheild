@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PromptShield — Dashboard</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <style>
+    /* ── RESET & BASE ───────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:      #f4f5f7;
+      --card:    #ffffff;
+      --border:  #e5e7eb;
+      --text:    #111827;
+      --muted:   #6b7280;
+      --subtle:  #9ca3af;
+      --blue:    #2563eb;
+      --red:     #dc2626;
+      --amber:   #d97706;
+      --green:   #16a34a;
+      --radius:  12px;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ── LAYOUT ─────────────────────────────────────────────── */
+    .sidebar {
+      position: fixed; left: 0; top: 0; bottom: 0;
+      width: 220px; background: var(--card);
+      border-right: 1px solid var(--border);
+      padding: 20px 16px;
+      display: flex; flex-direction: column;
+      z-index: 100;
+    }
+
+    .main {
+      margin-left: 220px;
+      padding: 28px 32px;
+      max-width: 1200px;
+    }
+
+    /* ── SIDEBAR ────────────────────────────────────────────── */
+    .brand {
+      display: flex; align-items: center; gap: 10px;
+      margin-bottom: 28px;
+    }
+    .brand-icon {
+      width: 34px; height: 34px;
+      background: var(--blue);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .brand-icon svg { stroke: white; }
+    .brand-name { font-size: 15px; font-weight: 700; }
+    .brand-ver  { font-size: 10px; color: var(--subtle); }
+
+    .nav-label {
+      font-size: 10px; font-weight: 600; color: var(--subtle);
+      text-transform: uppercase; letter-spacing: 0.6px;
+      margin: 12px 0 6px;
+    }
+    .nav-item {
+      display: flex; align-items: center; gap: 8px;
+      padding: 7px 10px; border-radius: 8px;
+      font-size: 13px; font-weight: 500; color: var(--muted);
+      cursor: pointer; text-decoration: none;
+      transition: all 0.15s;
+      margin-bottom: 2px;
+    }
+    .nav-item:hover, .nav-item.active {
+      background: #eff6ff; color: var(--blue);
+    }
+
+    .status-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--green); margin-top: auto;
+      display: flex; align-items: center; gap: 6px;
+      font-size: 11px; color: var(--subtle);
+    }
+    .status-dot::before {
+      content: ''; display: block;
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--green);
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    /* ── TOP BAR ────────────────────────────────────────────── */
+    .topbar {
+      display: flex; align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+    }
+    .page-title { font-size: 22px; font-weight: 700; }
+    .page-sub   { font-size: 13px; color: var(--muted); margin-top: 2px; }
+    .topbar-actions { display: flex; gap: 10px; }
+
+    /* ── BUTTONS ─────────────────────────────────────────────── */
+    .btn {
+      padding: 8px 16px; border-radius: 8px;
+      font-size: 13px; font-weight: 600;
+      cursor: pointer; border: 1px solid var(--border);
+      background: var(--card); color: var(--text);
+      transition: all 0.15s;
+    }
+    .btn:hover { background: #f3f4f6; }
+    .btn-primary { background: var(--blue); color: #fff; border-color: var(--blue); }
+    .btn-primary:hover { background: #1d4ed8; }
+    .btn-danger { background: var(--red); color: #fff; border-color: var(--red); }
+    .btn-danger:hover { background: #b91c1c; }
+    .btn-sm { padding: 5px 10px; font-size: 11px; }
+
+    /* ── STAT CARDS ──────────────────────────────────────────── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px; margin-bottom: 24px;
+    }
+    .stat-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 20px;
+    }
+    .stat-header {
+      display: flex; align-items: center;
+      justify-content: space-between; margin-bottom: 12px;
+    }
+    .stat-icon {
+      width: 36px; height: 36px; border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px;
+    }
+    .stat-icon.red    { background: #fef2f2; }
+    .stat-icon.amber  { background: #fffbeb; }
+    .stat-icon.blue   { background: #eff6ff; }
+    .stat-icon.green  { background: #f0fdf4; }
+    .stat-badge {
+      font-size: 11px; font-weight: 600; padding: 2px 8px;
+      border-radius: 99px;
+    }
+    .stat-badge.up   { background: #fef2f2; color: var(--red); }
+    .stat-badge.safe { background: #f0fdf4; color: var(--green); }
+    .stat-number { font-size: 28px; font-weight: 700; line-height: 1; }
+    .stat-label  { font-size: 13px; color: var(--muted); margin-top: 4px; }
+
+    /* ── CHARTS ROW ──────────────────────────────────────────── */
+    .charts-row {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 16px; margin-bottom: 24px;
+    }
+    @media (max-width: 900px) { .charts-row { grid-template-columns: 1fr; } }
+
+    .card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 20px;
+    }
+    .card-title {
+      font-size: 14px; font-weight: 600; margin-bottom: 16px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .card-title span { font-size: 12px; color: var(--muted); font-weight: 400; }
+
+    /* ── INCIDENT TABLE ──────────────────────────────────────── */
+    .incident-table { width: 100%; border-collapse: collapse; }
+    .incident-table th {
+      text-align: left; font-size: 11px; font-weight: 600;
+      color: var(--subtle); text-transform: uppercase;
+      letter-spacing: 0.4px; padding: 0 12px 10px;
+      border-bottom: 1px solid var(--border);
+    }
+    .incident-table td {
+      padding: 10px 12px; font-size: 13px;
+      border-bottom: 1px solid #f9fafb;
+      vertical-align: middle;
+    }
+    .incident-table tr:hover td { background: #fafafa; }
+
+    .risk-pill {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 3px 10px; border-radius: 99px;
+      font-size: 12px; font-weight: 600;
+    }
+    .risk-pill.critical { background: #fef2f2; color: var(--red); }
+    .risk-pill.high     { background: #fffbeb; color: var(--amber); }
+    .risk-pill.medium   { background: #eff6ff; color: var(--blue); }
+    .risk-pill.low      { background: #f0fdf4; color: var(--green); }
+
+    .cat-tag {
+      display: inline-block; padding: 2px 7px;
+      background: #f3f4f6; border-radius: 4px;
+      font-size: 11px; font-weight: 600; color: #374151;
+      margin: 1px;
+    }
+    .action-tag {
+      font-size: 11px; padding: 2px 8px;
+      border-radius: 99px; font-weight: 600;
+    }
+    .action-tokenized { background: #eff6ff; color: var(--blue); }
+    .action-blocked   { background: #fef2f2; color: var(--red); }
+    .action-redacted  { background: #fffbeb; color: var(--amber); }
+
+    .live-badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 3px 10px; border-radius: 99px;
+      background: #f0fdf4; color: var(--green);
+      font-size: 11px; font-weight: 600;
+    }
+    .live-badge::before {
+      content: ''; width: 6px; height: 6px;
+      border-radius: 50%; background: var(--green);
+      animation: pulse 1.5s infinite;
+    }
+
+    /* ── POLICY PANEL ────────────────────────────────────────── */
+    .policy-card { margin-top: 24px; }
+    .policy-row {
+      display: flex; align-items: center;
+      justify-content: space-between;
+      padding: 14px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .policy-row:last-child { border-bottom: none; }
+    .policy-name  { font-size: 13px; font-weight: 600; }
+    .policy-desc  { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .policy-input {
+      padding: 6px 10px; border: 1px solid var(--border);
+      border-radius: 7px; font-size: 13px; color: var(--text);
+      background: var(--card);
+    }
+    .policy-input:focus { outline: none; border-color: var(--blue); }
+
+    /* Toggle switch */
+    .toggle { position: relative; width: 40px; height: 22px; }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider {
+      position: absolute; inset: 0;
+      background: #d1d5db; border-radius: 99px;
+      cursor: pointer; transition: background 0.2s;
+    }
+    .toggle-slider::before {
+      content: '';
+      position: absolute;
+      width: 18px; height: 18px;
+      left: 2px; top: 2px;
+      background: white; border-radius: 50%;
+      transition: transform 0.2s;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
+    .toggle input:checked + .toggle-slider { background: var(--blue); }
+    .toggle input:checked + .toggle-slider::before { transform: translateX(18px); }
+
+    /* ── EMPTY STATE ─────────────────────────────────────────── */
+    .empty-row td {
+      text-align: center; padding: 40px;
+      color: var(--subtle); font-size: 14px;
+    }
+
+    /* ── NOTIFICATION ────────────────────────────────────────── */
+    #notification {
+      position: fixed; top: 20px; right: 20px;
+      background: #111; color: #fff;
+      padding: 10px 16px; border-radius: 10px;
+      font-size: 13px; z-index: 9999;
+      opacity: 0; transform: translateY(-8px);
+      transition: all 0.3s;
+      pointer-events: none;
+    }
+    #notification.show {
+      opacity: 1; transform: translateY(0);
+    }
+  </style>
+</head>
+<body>
+
+<!-- NOTIFICATION -->
+<div id="notification"></div>
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="brand">
+    <div class="brand-icon">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+      </svg>
+    </div>
+    <div>
+      <div class="brand-name">PromptShield</div>
+      <div class="brand-ver">v1.0 · Admin</div>
+    </div>
+  </div>
+
+  <div class="nav-label">Dashboard</div>
+  <a class="nav-item active" href="#">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+    Overview
+  </a>
+  <a class="nav-item" href="#incidents-section">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+    Incidents
+  </a>
+  <a class="nav-item" href="#policy-section">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+    Policy
+  </a>
+
+  <div style="margin-top:auto;">
+    <div class="status-dot">Backend live</div>
+  </div>
+</nav>
+
+<!-- MAIN CONTENT -->
+<main class="main">
+
+  <!-- TOP BAR -->
+  <div class="topbar">
+    <div>
+      <div class="page-title">Security Dashboard</div>
+      <div class="page-sub" id="last-updated">Loading...</div>
+    </div>
+    <div class="topbar-actions">
+      <button class="btn" onclick="loadAll()">↻ Refresh</button>
+      <button class="btn btn-danger btn-sm" onclick="clearIncidents()">Clear Data</button>
+    </div>
+  </div>
+
+  <!-- STATS GRID -->
+  <div class="stats-grid" id="stats-grid">
+    <div class="stat-card">
+      <div class="stat-header">
+        <div class="stat-icon red">🛑</div>
+        <span class="stat-badge up" id="badge-24h">+0 today</span>
+      </div>
+      <div class="stat-number" id="stat-total">–</div>
+      <div class="stat-label">Total Incidents</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-header">
+        <div class="stat-icon amber">📎</div>
+        <span class="stat-badge up" id="badge-files">0 files</span>
+      </div>
+      <div class="stat-number" id="stat-files">–</div>
+      <div class="stat-label">File Uploads Scanned</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-header">
+        <div class="stat-icon blue">⚡</div>
+      </div>
+      <div class="stat-number" id="stat-risk">–</div>
+      <div class="stat-label">Avg Risk Score</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-header">
+        <div class="stat-icon green">✅</div>
+        <span class="stat-badge safe">Protected</span>
+      </div>
+      <div class="stat-number" id="stat-blocked">–</div>
+      <div class="stat-label">Actions Taken</div>
+    </div>
+  </div>
+
+  <!-- CHARTS ROW -->
+  <div class="charts-row">
+    <div class="card">
+      <div class="card-title">
+        Data Categories Detected
+        <span>by type</span>
+      </div>
+      <canvas id="chart-categories" height="200"></canvas>
+    </div>
+    <div class="card">
+      <div class="card-title">
+        AI Tools Used
+        <span>by volume</span>
+      </div>
+      <canvas id="chart-tools" height="200"></canvas>
+    </div>
+  </div>
+
+  <!-- INCIDENTS TABLE -->
+  <div class="card" id="incidents-section">
+    <div class="card-title">
+      Live Incident Feed
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span class="live-badge">Live</span>
+        <span id="incident-count" style="font-size:12px;color:var(--muted);">0 incidents</span>
+      </div>
+    </div>
+
+    <div style="overflow-x:auto;">
+      <table class="incident-table">
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Data Types</th>
+            <th>Risk</th>
+            <th>Tool</th>
+            <th>Type</th>
+            <th>Action</th>
+            <th>User</th>
+          </tr>
+        </thead>
+        <tbody id="incident-tbody">
+          <tr class="empty-row"><td colspan="7">Loading incidents...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- POLICY PANEL -->
+  <div class="card policy-card" id="policy-section">
+    <div class="card-title">Protection Policy</div>
+
+    <div class="policy-row">
+      <div>
+        <div class="policy-name">Protection Mode</div>
+        <div class="policy-desc">How PromptShield handles detected secrets</div>
+      </div>
+      <select class="policy-input" id="policy-mode">
+        <option value="tokenize">Tokenize (replace + restore)</option>
+        <option value="warn">Warn only (show alert)</option>
+        <option value="block">Block entirely</option>
+      </select>
+    </div>
+
+    <div class="policy-row">
+      <div>
+        <div class="policy-name">Risk Threshold</div>
+        <div class="policy-desc">Minimum risk score to trigger protection (0–100)</div>
+      </div>
+      <input type="number" class="policy-input" id="policy-threshold"
+             min="0" max="100" value="30" style="width:80px;">
+    </div>
+
+    <div class="policy-row">
+      <div>
+        <div class="policy-name">Block File Uploads</div>
+        <div class="policy-desc">Require review before any file upload to AI tools</div>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" id="policy-block-files">
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+
+    <div style="margin-top:16px; display:flex; gap:10px;">
+      <button class="btn btn-primary" onclick="savePolicy()">Save Policy</button>
+      <div id="policy-saved" style="font-size:13px;color:var(--green);align-self:center;opacity:0;transition:opacity 0.3s;"></div>
+    </div>
+  </div>
+
+</main>
+
+<script>
+// ──────────────────────────────────────────────────────────────────────────────
+// DASHBOARD JAVASCRIPT
+// Connects to the FastAPI backend and renders everything in real-time
+// ──────────────────────────────────────────────────────────────────────────────
+
+const API = ''; // Empty = same origin. Change to 'http://localhost:8000' if different.
+let categoryChart, toolChart;
+let incidents = []; // Local cache
+
+// ── INITIALIZATION ────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  loadAll();
+  connectSSE();
+  loadPolicy();
+});
+
+async function loadAll() {
+  await Promise.all([loadStats(), loadIncidents()]);
+  updateLastUpdated();
+}
+
+function updateLastUpdated() {
+  document.getElementById('last-updated').textContent =
+    'Last updated: ' + new Date().toLocaleTimeString();
+}
+
+// ── STATS ─────────────────────────────────────────────────────────────────────
+async function loadStats() {
+  try {
+    const data = await apiFetch('/api/stats');
+
+    document.getElementById('stat-total').textContent   = data.total_incidents;
+    document.getElementById('stat-files').textContent   = data.file_incidents;
+    document.getElementById('stat-risk').textContent    = data.avg_risk_score;
+    document.getElementById('stat-blocked').textContent = data.total_incidents - 0; // All are protected
+
+    document.getElementById('badge-24h').textContent   = `+${data.incidents_last_24h} today`;
+    document.getElementById('badge-files').textContent = `${data.file_incidents} files`;
+
+    renderCategoryChart(data.category_breakdown || {});
+    renderToolChart(data.tool_breakdown || {});
+  } catch (err) {
+    console.error('Stats fetch failed:', err);
+  }
+}
+
+// ── CHARTS ────────────────────────────────────────────────────────────────────
+function renderCategoryChart(breakdown) {
+  const labels = Object.keys(breakdown);
+  const values = Object.values(breakdown);
+  const colors = labels.map((_, i) => [
+    '#ef4444','#f97316','#eab308','#22c55e','#3b82f6',
+    '#8b5cf6','#ec4899','#06b6d4','#84cc16','#f59e0b'
+  ][i % 10]);
+
+  if (categoryChart) categoryChart.destroy();
+
+  const ctx = document.getElementById('chart-categories').getContext('2d');
+  categoryChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels.length > 0 ? labels : ['No data yet'],
+      datasets: [{
+        data: values.length > 0 ? values : [0],
+        backgroundColor: colors,
+        borderRadius: 6,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+        y: { grid: { color: '#f3f4f6' }, ticks: { font: { size: 11 }, stepSize: 1 } }
+      }
+    }
+  });
+}
+
+function renderToolChart(breakdown) {
+  const labels = Object.keys(breakdown);
+  const values = Object.values(breakdown);
+
+  if (toolChart) toolChart.destroy();
+
+  const ctx = document.getElementById('chart-tools').getContext('2d');
+  toolChart = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: labels.length > 0 ? labels : ['No data yet'],
+      datasets: [{
+        data: values.length > 0 ? values : [1],
+        backgroundColor: ['#3b82f6','#8b5cf6','#ef4444','#22c55e','#f97316'],
+        borderWidth: 0,
+        hoverOffset: 4,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: 'bottom', labels: { font: { size: 11 }, padding: 12 } }
+      },
+      cutout: '65%',
+    }
+  });
+}
+
+// ── INCIDENTS TABLE ───────────────────────────────────────────────────────────
+async function loadIncidents() {
+  try {
+    incidents = await apiFetch('/api/incidents?limit=100');
+    renderIncidents(incidents);
+  } catch (err) {
+    console.error('Incidents fetch failed:', err);
+  }
+}
+
+function renderIncidents(data) {
+  const tbody = document.getElementById('incident-tbody');
+  document.getElementById('incident-count').textContent = `${data.length} incidents`;
+
+  if (data.length === 0) {
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="7">No incidents recorded yet. Install the extension and start chatting!</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = data.map(incident => {
+    const score = incident.risk_score;
+    const level = score >= 70 ? 'critical' : score >= 40 ? 'high' : score >= 20 ? 'medium' : 'low';
+    const time = new Date(incident.timestamp * 1000).toLocaleString();
+    const cats = incident.categories.map(c => `<span class="cat-tag">${c}</span>`).join('');
+    const action = incident.action_taken || 'tokenized';
+    const type = incident.is_file
+      ? `<span class="cat-tag">📎 ${incident.file_type || 'file'}</span>`
+      : '<span class="cat-tag">💬 text</span>';
+
+    return `
+      <tr>
+        <td style="font-size:12px;color:var(--muted);white-space:nowrap;">${time}</td>
+        <td>${cats}</td>
+        <td><span class="risk-pill ${level}">${score}/100</span></td>
+        <td style="font-size:12px;">${incident.ai_tool}</td>
+        <td>${type}</td>
+        <td><span class="action-tag action-${action}">${action}</span></td>
+        <td style="font-size:12px;color:var(--subtle);">${incident.user_hash.slice(0, 8)}…</td>
+      </tr>
+    `;
+  }).join('');
+}
+
+// ── REAL-TIME SSE ─────────────────────────────────────────────────────────────
+function connectSSE() {
+  const evtSource = new EventSource(`${API}/api/stream`);
+
+  evtSource.onmessage = (event) => {
+    const data = JSON.parse(event.data);
+    if (data.type === 'incident') {
+      // Prepend new incident to local cache
+      incidents.unshift(data);
+      renderIncidents(incidents);
+      // Reload stats too
+      loadStats();
+      // Flash notification
+      notify(`New incident: ${(data.categories || []).join(', ')} · Risk ${data.risk_score}`);
+    }
+  };
+
+  evtSource.onerror = () => {
+    // Reconnect silently after 3 seconds
+    setTimeout(connectSSE, 3000);
+    evtSource.close();
+  };
+}
+
+// ── POLICY ────────────────────────────────────────────────────────────────────
+async function loadPolicy() {
+  try {
+    const policy = await apiFetch('/api/policy');
+    document.getElementById('policy-mode').value      = policy.mode;
+    document.getElementById('policy-threshold').value = policy.risk_threshold;
+    document.getElementById('policy-block-files').checked = policy.block_file_uploads;
+  } catch (err) {
+    console.error('Policy fetch failed:', err);
+  }
+}
+
+async function savePolicy() {
+  const policy = {
+    mode: document.getElementById('policy-mode').value,
+    risk_threshold: parseInt(document.getElementById('policy-threshold').value),
+    block_file_uploads: document.getElementById('policy-block-files').checked,
+  };
+
+  try {
+    await apiFetch('/api/policy', { method: 'PUT', body: JSON.stringify(policy) });
+    const el = document.getElementById('policy-saved');
+    el.textContent = '✓ Saved successfully';
+    el.style.opacity = 1;
+    setTimeout(() => { el.style.opacity = 0; }, 2000);
+  } catch (err) {
+    notify('Failed to save policy');
+  }
+}
+
+// ── CLEAR ─────────────────────────────────────────────────────────────────────
+async function clearIncidents() {
+  if (!confirm('Clear all incident data? This cannot be undone.')) return;
+  await apiFetch('/api/incidents', { method: 'DELETE' });
+  incidents = [];
+  renderIncidents([]);
+  loadStats();
+  notify('All incidents cleared');
+}
+
+// ── HELPERS ───────────────────────────────────────────────────────────────────
+async function apiFetch(path, options = {}) {
+  const headers = { 'Content-Type': 'application/json', ...options.headers };
+  const res = await fetch(`${API}${path}`, { ...options, headers });
+  if (!res.ok) throw new Error(`API ${path} returned ${res.status}`);
+  return res.json();
+}
+
+function notify(message) {
+  const el = document.getElementById('notification');
+  el.textContent = message;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 3000);
+}
+</script>
+</body>
+</html>

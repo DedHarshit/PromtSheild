@@ -1,0 +1,52 @@
+# ─── Python ───────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+
+# ─── Virtual Environment ───────────────────────────────────────────────────────
+venv/
+env/
+.env
+.venv
+
+# ─── FastAPI / Backend ────────────────────────────────────────────────────────
+promptshield.db        # SQLite database — never commit this
+*.db
+*.sqlite
+*.sqlite3
+
+# ─── Environment Variables ────────────────────────────────────────────────────
+.env
+.env.local
+.env.production
+*.env
+
+# ─── VS Code ──────────────────────────────────────────────────────────────────
+.vscode/
+*.code-workspace
+
+# ─── OS Files ─────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ─── Logs ─────────────────────────────────────────────────────────────────────
+*.log
+logs/
+
+# ─── Node (if any frontend tooling added later) ───────────────────────────────
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# ─── Chrome Extension Build Artifacts ────────────────────────────────────────
+*.zip
+*.crx
+*.pem
+
+# ─── Pytest / Testing ─────────────────────────────────────────────────────────
+.pytest_cache/
+htmlcov/
+.coverage
